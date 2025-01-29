@@ -14,47 +14,70 @@
             width: 80%;
             margin: 0 auto;
             border: 1px solid #ccc;
-            height: 500px;
-            overflow: hidden;
+            height: 100vh;
+            overflow-y: scroll;
             position: relative;
         }
         canvas {
             display: block;
             margin: 0 auto;
         }
+        .controls {
+            margin: 20px;
+        }
+        button {
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        input[type="range"] {
+            margin: 5px;
+        }
     </style>
 </head>
 <body>
     <h1>PDF Viewer</h1>
-    
+
     <!-- Container for displaying the PDF -->
     <div id="pdf-container">
-        <canvas id="pdf-canvas"></canvas>
+        <!-- Pages will be added dynamically here -->
+    </div>
+
+    <!-- Controls for zooming -->
+    <div class="controls">
+        <button id="zoom-in">Zoom In</button>
+        <button id="zoom-out">Zoom Out</button>
+        <input type="range" id="zoom-slider" min="0.5" max="3" step="0.1" value="1" />
+        <span id="zoom-level">Zoom: 1x</span>
     </div>
 
     <!-- Include PDF.js library via CDN -->
-    <script src="pdf.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
 
     <script>
+        // Set the worker source for PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
 
-        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
-        // PDF.js setup
         const url = '/example.pdf';  // Provide the path to your PDF file
 
-        // Get the canvas element
-        const canvas = document.getElementById('pdf-canvas');
-        const context = canvas.getContext('2d');
+        // Get the PDF container and set initial zoom level
+        const container = document.getElementById('pdf-container');
+        let pdfDoc = null;
+        let zoomLevel = 1;
 
         // Load the PDF
         pdfjsLib.getDocument(url).promise.then(pdf => {
+            pdfDoc = pdf;
             console.log('PDF loaded');
-            renderPage(1, pdf);  // Render the first page of the PDF
+            renderAllPages();  // Render all pages initially
         });
 
         // Function to render a specific page of the PDF
-        function renderPage(pageNum, pdf) {
-            pdf.getPage(pageNum).then(page => {
-                const viewport = page.getViewport({ scale: 1.5 });
+        function renderPage(pageNum) {
+            pdfDoc.getPage(pageNum).then(page => {
+                const viewport = page.getViewport({ scale: zoomLevel });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
 
@@ -63,9 +86,40 @@
                     canvasContext: context,
                     viewport: viewport
                 };
-                page.render(renderContext);
+                page.render(renderContext).promise.then(() => {
+                    // Append the canvas to the container for scrolling
+                    container.appendChild(canvas);
+                });
             });
         }
+
+        // Render all pages in the PDF
+        function renderAllPages() {
+            for (let i = 1; i <= pdfDoc.numPages; i++) {
+                renderPage(i);
+            }
+        }
+
+        // Event listener for "Zoom In" button
+        document.getElementById('zoom-in').addEventListener('click', () => {
+            zoomLevel = Math.min(zoomLevel + 0.1, 3); // Max zoom of 3
+            renderAllPages();  // Re-render all pages with the updated zoom level
+            document.getElementById("zoom-level").textContent = `Zoom: ${zoomLevel}x`;
+        });
+
+        // Event listener for "Zoom Out" button
+        document.getElementById('zoom-out').addEventListener('click', () => {
+            zoomLevel = Math.max(zoomLevel - 0.1, 0.5); // Min zoom of 0.5
+            renderAllPages();  // Re-render all pages with the updated zoom level
+            document.getElementById("zoom-level").textContent = `Zoom: ${zoomLevel}x`;
+        });
+
+        // Event listener for the zoom slider
+        document.getElementById('zoom-slider').addEventListener('input', (event) => {
+            zoomLevel = parseFloat(event.target.value);
+            renderAllPages();  // Re-render all pages with the updated zoom level
+            document.getElementById("zoom-level").textContent = `Zoom: ${zoomLevel}x`;
+        });
     </script>
 </body>
 </html>
