@@ -33,11 +33,13 @@
     </div>
 
     <!-- Include PDF.js library via CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script src="pdf.js"></script>
 
     <script>
+        
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.js';
         // PDF.js setup
-        const url = 'path/to/your.pdf';  // Provide the path to your PDF file
+        const url = '/example.pdf';  // Provide the path to your PDF file
 
         // Get the canvas element
         const canvas = document.getElementById('pdf-canvas');
